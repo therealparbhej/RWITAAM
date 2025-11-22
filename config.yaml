@@ -1,0 +1,6 @@
+build: echo 'Build complete'
+build_path: null
+dev: node server.js
+install: pnpm install
+
+
