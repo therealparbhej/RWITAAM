@@ -156,14 +156,28 @@ function initializeNewsletterForm() {
     const newsletterForm = document.querySelector('.newsletter-form');
     
     if (newsletterForm) {
-        newsletterForm.addEventListener('submit', function(e) {
+        newsletterForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const email = newsletterForm.querySelector('.newsletter-input').value;
             
             if (validateEmail(email)) {
-                showNotification('Thank you for subscribing to our newsletter!', 'success');
-                newsletterForm.reset();
+                try {
+                    const response = await fetch('/api/newsletter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'Unable to subscribe right now.');
+                    }
+
+                    showNotification('Thank you for subscribing to our newsletter!', 'success');
+                    newsletterForm.reset();
+                } catch (error) {
+                    showNotification(error.message || 'Subscription failed. Please try again.', 'error');
+                }
             } else {
                 showNotification('Please enter a valid email address.', 'error');
             }
