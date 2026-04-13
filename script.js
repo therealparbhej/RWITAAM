@@ -131,7 +131,7 @@ function initializeContactForm() {
                     })
                 });
                 
-                const result = await response.json();
+                const result = await parseApiResponse(response);
                 
                 if (result.success) {
                     showNotification('Message sent successfully! We\'ll get back to you soon.', 'success');
@@ -156,14 +156,28 @@ function initializeNewsletterForm() {
     const newsletterForm = document.querySelector('.newsletter-form');
     
     if (newsletterForm) {
-        newsletterForm.addEventListener('submit', function(e) {
+        newsletterForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const email = newsletterForm.querySelector('.newsletter-input').value;
             
             if (validateEmail(email)) {
-                showNotification('Thank you for subscribing to our newsletter!', 'success');
-                newsletterForm.reset();
+                try {
+                    const response = await fetch('/api/newsletter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    const result = await parseApiResponse(response);
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'Unable to subscribe right now. Backend may not be configured.');
+                    }
+
+                    showNotification('Thank you for subscribing to our newsletter!', 'success');
+                    newsletterForm.reset();
+                } catch (error) {
+                    showNotification(error.message || 'Subscription failed. Please try again.', 'error');
+                }
             } else {
                 showNotification('Please enter a valid email address.', 'error');
             }
@@ -172,6 +186,24 @@ function initializeNewsletterForm() {
 }
 
 // Utility functions
+async function parseApiResponse(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+
+    const text = await response.text();
+    if (!response.ok) {
+        return {
+            success: false,
+            message: 'Server returned a non-JSON response. Please verify backend API deployment.',
+            details: text.slice(0, 120)
+        };
+    }
+
+    return { success: true };
+}
+
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
